@@ -4,6 +4,15 @@ from src.connector.gmail import trash_email
 from src.intelligence.categoriser import categorise_email
 
 TRASH_CATEGORIES = ['promotion', 'spam', 'newsletter']
+AUTO_TRASH_LABELS = [
+    'SPAM',
+    'CATEGORY_PROMOTIONS',
+    'CATEGORY_SOCIAL'
+]
+
+def should_auto_trash(email):
+    return any(label in email['label_ids'] for label in AUTO_TRASH_LABELS)
+
 def clean_inbox(service, emails, dry_run=True):
     report = {
         'total': len(emails),
@@ -14,15 +23,28 @@ def clean_inbox(service, emails, dry_run=True):
 
     for email in emails:
         try:
-            result = categorise_email(email)
-            email['analysis'] = result
-
-            if result['suggested_action'] in ['trash', 'unsubscribe_and_trash']:
+            if should_auto_trash(email):
+                email['analysis'] = {
+                    'category': 'auto-filtered',
+                    'intent': 'detected by gmail label',
+                    'priority': 'low',
+                    'suggested_action': 'trash',
+                    'confidence': 1.0,
+                    'reason': f"Auto-trashed based on Gmail label: {', '.join(email['label_ids'])}"
+                }
                 if not dry_run:
                     trash_email(service, email['id'])
                 report['trashed'].append(email)
             else:
-                report['kept'].append(email)
+                result = categorise_email(email)
+                email['analysis'] = result
+
+                if result['suggested_action'] in ['trash', 'unsubscribe_and_trash']:
+                    if not dry_run:
+                        trash_email(service, email['id'])
+                    report['trashed'].append(email)
+                else:
+                    report['kept'].append(email)
 
         except Exception as e:
             report['errors'].append({
