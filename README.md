@@ -15,7 +15,7 @@ smart-mail is built in three layers:
 - Python 3.10+
 - Gmail API (Google Cloud)
 - Claude API (Anthropic)
-- httpx, google-auth, python-dotenv
+- httpx, google-auth, python-dotenv, tenacity
 
 ## Setup
 
@@ -36,7 +36,7 @@ source venv/bin/activate
 ### 3. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
 ```
 
 ### 4. Configure Gmail API
@@ -101,21 +101,30 @@ python3 main.py --live --limit=200 --json
 ### Example output (human readable)
 
 ```
-CLEANUP REPORT [LIVE]
+============================================================
+CLEANUP REPORT [LIVE]  —  2026-03-31T10:28:45.529459+00:00
 ============================================================
 Total emails scanned : 10
 Emails to trash      : 4
 Emails to keep       : 6
 Errors               : 0
 
---- TRASHED ---
+--- TRASHED (4) ---
   [promotion] Time to upgrade your sunscreen
-  From: Nykaa <noreply@nykaa.com>
-  Reason: Marketing email promoting skincare products
+  From    : Nykaa <noreply@nykaa.com>
+  Reason  : Commercial beauty brand promotion with sales intent
+  Action  : trash  |  confidence: 0.95
 
-  [promotion] Guangzhou awaits
-  From: IndiGo <mailers@marketing.goindigo.in>
-  Reason: Airline marketing email promoting flight deals
+  [auto-filtered] Guangzhou awaits
+  From    : IndiGo <mailers@marketing.goindigo.in>
+  Reason  : Auto-trashed based on Gmail label: CATEGORY_PROMOTIONS
+  Action  : trash  |  confidence: 1.00
+
+--- KEPT (6) ---
+  [transactional] You're out of Gmail storage
+  From    : Google <google-noreply@google.com>
+  Reason  : Official Google service alert requiring user action
+  Action  : keep  |  confidence: 0.95
 ```
 
 ### Example output (JSON mode)
@@ -132,9 +141,9 @@ Errors               : 0
       "from": "Nykaa <noreply@nykaa.com>",
       "subject": "Time to upgrade your sunscreen",
       "category": "promotion",
-      "suggested_action": "unsubscribe_and_trash",
-      "confidence": 0.9,
-      "reason": "Marketing email promoting skincare products"
+      "suggested_action": "trash",
+      "confidence": 0.95,
+      "reason": "Commercial beauty brand promotion with sales intent"
     }
   ]
 }
